@@ -2,19 +2,19 @@ import numpy as np
 
 #Calculates failure load of baldwin loads using a PI beam configuration
 
-def main():
-
+def evalBeam(w_init, h2_init, h3_init, printFlag = False):
+    
     t = 1.27 #Thickness
-    w = 15 #Mini rectangle width
-    h2 = 148.73 #Length of webbing leading up to top mini rectangle - ADD TO SMALL RECTANGLE HEIGHT FOR TOTAL WEB HEIGHT
-    h3 = 1.27 #Mini rectangle height
+    w = w_init #Mini rectangle width
+    h2 = h2_init #Length of webbing leading up to top mini rectangle - ADD TO SMALL RECTANGLE HEIGHT FOR TOTAL WEB HEIGHT
+    h3 = h3_init #Mini rectangle height
     b = 100 #Top width - < 100
-    h1 = 2.54 #Height of top component
+    h1 = 1.27 #Height of top component
     aVal = 100 #A value for shear buckling
     E = 4000
     availableExt = b - 2*w - 2*t
-    sideL = 25/2#availableExt/5 #Manual computation
-    middleL = 45#availableExt/5*3
+    sideL = availableExt/5 #Manual computation
+    middleL = availableExt/5*3
     maxComp = 6
     maxShear = 4
     maxL =[maxComp, maxShear]
@@ -70,27 +70,57 @@ def main():
     plateBuckShearWeb = 5*pbc*((t/(h2+h3))**2 + (t/aVal)**2)
 
     newComp = np.min(np.array([plateBuckFixed, plateBuckFree, plateBuckWeb, maxComp]))
-    if newComp != maxComp:
+    if newComp != maxComp and printFlag:
         print("New Comp: {}".format(newComp))
     newShear = np.min(np.array([plateBuckShearWeb, maxShear]))
-    if newShear != maxShear:
+    if newShear != maxShear and printFlag:
         print("New Shear: {}".format(newShear))
 
     maxFlexCNeg = I*maxComp/(.19*(y_cent)*10**3)
     maxFlexCPos = I*maxComp/(.166*(total_h-y_cent)*10**3)
-    print("Base Flexural C (+M): {}".format(maxFlexCPos))
-    print("Base Flexural C (-M): {}".format(maxFlexCNeg))
+    if printFlag:
+        print("Base Flexural C (+M): {}".format(maxFlexCPos))
+        print("Base Flexural C (-M): {}".format(maxFlexCNeg))
     maxShearCent = newShear*I*(2*t)/(Q_cent) #Max shear is 1P in the denominator
     maxFlexCNeg = I*newComp/(.19*(y_cent)*10**3)
     maxFlexCPos = I*newComp/(.166*(total_h-y_cent)*10**3)
-    print("Max Flexurals: Negative Moment")
-    print("T, C: {}, {}".format(maxFlexTNeg, maxFlexCNeg))
-    print("Max Flexurals: Positive Moment")
-    print("T, C: {}, {}".format(maxFlexTPos, maxFlexCPos))
-    print("Shear Failures (Glue,Cent) {}, {}".format(maxShearGlue, maxShearCent))
-    print("Plate Bucklings")
-    print("Plate Fixed and Free (Stress): {}, {}".format(plateBuckFixed, plateBuckFree))
-    print("Plate Web and Shear (Stress): {}, {}".format(plateBuckWeb, plateBuckShearWeb))
+    if printFlag:
+        print("Max Flexurals: Negative Moment")
+        print("T, C: {}, {}".format(maxFlexTNeg, maxFlexCNeg))
+        print("Max Flexurals: Positive Moment")
+        print("T, C: {}, {}".format(maxFlexTPos, maxFlexCPos))
+        print("Shear Failures (Glue,Cent) {}, {}".format(maxShearGlue, maxShearCent))
+        print("Plate Bucklings")
+        print("Plate Fixed and Free (Stress): {}, {}".format(plateBuckFixed, plateBuckFree))
+        print("Plate Web and Shear (Stress): {}, {}".format(plateBuckWeb, plateBuckShearWeb))
+    
+    failureLoads = np.array([maxShearCent, maxFlexCPos, maxFlexTPos])
+    idx = np.argmin(failureLoads)
+    if idx == 0:
+        cause = 'Shear'
+    elif idx == 1:
+        cause = 'Compression'
+    elif idx == 2:
+        cause = 'Tension'
+    
+    return failureLoads[idx], cause, (w, h2, h3)
+    
+def main():
+    
+    bestLoad = 0
+    
+    for w in range(5, 30):
+        for h2 in range(110, 131):
+            for h3 in [1.27, 2.54]:
+                fLoad, fCause, params = evalBeam(w, h2, h3)
+                if fLoad > bestLoad:
+                    bestLoad = fLoad
+                    assCause = fCause
+                    bestParam = params
+                    
+    print("Best Case Failure Load: {}".format(fLoad))
+    print("Cause of said load: {}".format(assCause))
+    print("Set of best params: {}".format(bestParam))
     
 if __name__ == '__main__':
     
