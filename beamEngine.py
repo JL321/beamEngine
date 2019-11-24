@@ -2,14 +2,14 @@ import numpy as np
 
 #Calculates failure load of baldwin loads using a PI beam configuration
 
-def evalBeam(w_init, h2_init, h3_init, printFlag = False):
+def evalBeam(w_init, h2_init, h1_init, printFlag = False):
     
     t = 1.27 #Thickness
     w = w_init #Mini rectangle width
     h2 = h2_init #Length of webbing leading up to top mini rectangle - ADD TO SMALL RECTANGLE HEIGHT FOR TOTAL WEB HEIGHT
-    h3 = h3_init #Mini rectangle height
+    h3 = 1.27 #Mini rectangle height
     b = 100 #Top width - < 100
-    h1 = 1.27 #Height of top component
+    h1 = h1_init #Height of top component
     aVal = 100 #A value for shear buckling
     E = 4000
     availableExt = b - 2*w - 2*t
@@ -22,6 +22,8 @@ def evalBeam(w_init, h2_init, h3_init, printFlag = False):
     #print("Verified- middle and side L: {}, {}".format(middleL, sideL))
     
     total_h= h1+h2+h3
+    if printFlag:
+        print("Total height: {}".format(total_h))
     
     #Note restriction: Total height of bridge - h1+h2+h3 - should be smaller than 100
     
@@ -66,7 +68,7 @@ def evalBeam(w_init, h2_init, h3_init, printFlag = False):
     pbc = np.pi**2*E/(12*(1-.2**2)) #Plate buckling constant
     plateBuckFixed = 4*pbc*(h1/middleL)**2
     plateBuckFree = 0.425*pbc*(h1/sideL)**2
-    plateBuckWeb = 6*pbc*(t/((h2+h3)/2))**2    
+    plateBuckWeb = 6*pbc*(t/((h2+h3)-y_cent))**2    
     plateBuckShearWeb = 5*pbc*((t/(h2+h3))**2 + (t/aVal)**2)
 
     newComp = np.min(np.array([plateBuckFixed, plateBuckFree, plateBuckWeb, maxComp]))
@@ -103,24 +105,27 @@ def evalBeam(w_init, h2_init, h3_init, printFlag = False):
     elif idx == 2:
         cause = 'Tension'
     
-    return failureLoads[idx], cause, (w, h2, h3)
+    return failureLoads[idx], cause, (w, h2, h1)
     
 def main():
     
     bestLoad = 0
     
-    for w in range(5, 30):
-        for h2 in range(110, 131):
-            for h3 in [1.27, 2.54]:
-                fLoad, fCause, params = evalBeam(w, h2, h3)
+    for w in range(5, 21):
+        for h2 in range(100, 111):
+            for h1 in [1.27]:
+                fLoad, fCause, params = evalBeam(w, h2, h1)
                 if fLoad > bestLoad:
                     bestLoad = fLoad
                     assCause = fCause
                     bestParam = params
-                    
-    print("Best Case Failure Load: {}".format(fLoad))
+      
+    print("Best Case Failure Load: {}".format(bestLoad))
     print("Cause of said load: {}".format(assCause))
     print("Set of best params: {}".format(bestParam))
+    
+    load, _, _ = evalBeam(20, 110-1.27*2, 1.27, printFlag = True)
+    print(load)
     
 if __name__ == '__main__':
     
